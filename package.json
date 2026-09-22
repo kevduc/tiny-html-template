@@ -1,0 +1,89 @@
+{
+  "name": "@kevduc/tiny-html-template",
+  "version": "0.1.0",
+  "description": "Tiny, zero-dependency HTML tagged templates with lazy, composable fragments.",
+  "author": "Kevin Duconge",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@12.5.1+sha512.e3f305bc784a2bc89f5ad3b6138889470fae8d2af5f36b61216ec91c2c3d64089775f9de38aac331044ea40f245cb0d5666392dfdf65824e1907ef6a2c62de5f",
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/html.js",
+  "types": "./dist/html.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/html.d.ts",
+      "import": "./dist/html.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevduc/tiny-html-template.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kevduc/tiny-html-template/issues"
+  },
+  "homepage": "https://github.com/kevduc/tiny-html-template#readme",
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix --max-warnings 0",
+    "test": "node --test src/html.test.ts",
+    "typecheck": "tsc --project tsconfig.json",
+    "lint:package": "publint --strict",
+    "verify": "pnpm run format:check && pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run lint:package && pnpm publish --dry-run --ignore-scripts --access public --no-git-checks && pnpm audit --audit-level=high"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.json": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.md": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{yaml,yml}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@eslint/js": "10.0.1",
+    "@eslint/json": "2.1.0",
+    "@eslint/markdown": "8.0.3",
+    "@ianvs/prettier-plugin-sort-imports": "4.7.1",
+    "@tsconfig/node-ts": "23.6.4",
+    "@tsconfig/strictest": "2.0.8",
+    "@types/node": "22.20.4",
+    "eslint": "10.11.0",
+    "eslint-plugin-n": "18.3.0",
+    "eslint-plugin-yml": "3.8.1",
+    "husky": "9.1.7",
+    "jiti": "2.7.0",
+    "lint-staged": "16.4.0",
+    "prettier": "3.9.8",
+    "publint": "0.3.24",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0"
+  }
+}

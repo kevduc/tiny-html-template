@@ -1,0 +1,72 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    if: github.repository == 'kevduc/tiny-html-template'
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: refs/tags/${{ github.event.release.tag_name }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          cache: false
+          install: false
+          node-version-file: false
+      - name: Reject bootstrap version
+        run: |
+          package_version="$(node --input-type=module -e 'import packageMetadata from "./package.json" with { type: "json" }; process.stdout.write(packageMetadata.version);')"
+          if test "$package_version" = '0.1.0'; then
+            echo 'The bootstrap version must be published manually.' >&2
+            exit 1
+          fi
+      - name: Verify release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          test "$(git describe --exact-match --tags HEAD)" = "$RELEASE_TAG"
+          test "$(node --input-type=module -e 'import packageMetadata from "./package.json" with { type: "json" }; process.stdout.write("v" + packageMetadata.version);')" = "$RELEASE_TAG"
+          test "$(node --input-type=module -e 'import packageMetadata from "./package.json" with { type: "json" }; process.stdout.write(packageMetadata.repository.url);')" = 'git+https://github.com/kevduc/tiny-html-template.git'
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor HEAD origin/main
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm run verify
+      - name: Reject an already published package version
+        run: |
+          package_version="$(node --input-type=module -e 'import packageMetadata from "./package.json" with { type: "json" }; process.stdout.write(packageMetadata.version);')"
+          if pnpm_view_error_output="$(pnpm view "@kevduc/tiny-html-template@$package_version" version --registry https://registry.npmjs.org 2>&1 >/dev/null)"; then
+            pnpm_view_status=0
+          else
+            pnpm_view_status=$?
+          fi
+          if test "$pnpm_view_status" -eq 0; then
+            echo "The release version is already published." >&2
+            exit 1
+          fi
+          if test "$pnpm_view_status" -ne 1 || ! grep -q 'ERR_PNPM_FETCH_404' <<<"$pnpm_view_error_output"; then
+            echo "Could not verify that the release version is unpublished." >&2
+            printf '%s\n' "$pnpm_view_error_output" >&2
+            exit 1
+          fi
+      - name: Create and verify package tarball
+        run: |
+          package_tarball="$RUNNER_TEMP/tiny-html-template.tgz"
+          pnpm pack --ignore-scripts --out "$package_tarball"
+          pnpm exec attw "$package_tarball" --profile esm-only
+          printf 'PACKAGE_TARBALL=%s\n' "$package_tarball" >> "$GITHUB_ENV"
+      - run: pnpm publish "$PACKAGE_TARBALL" --access public --provenance --no-git-checks

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  workflow-lint:
+    name: Lint workflows on Ubuntu x64
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify runner architecture
+        run: test "$RUNNER_ARCH" = 'X64'
+      - name: Download and verify actionlint
+        run: |
+          actionlint_archive="$RUNNER_TEMP/actionlint_1.7.12_linux_amd64.tar.gz"
+          curl --fail --location --silent --show-error --output "$actionlint_archive" \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          printf '%s  %s\n' \
+            '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' \
+            "$actionlint_archive" | sha256sum --check --status
+          tar --extract --file "$actionlint_archive" --directory "$RUNNER_TEMP"
+      - name: Lint GitHub Actions workflows
+        run: '"$RUNNER_TEMP/actionlint" -shellcheck=shellcheck'
+
+  verify:
+    name: Verify on Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.14.0, 24, 26]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          package-manager-cache: false
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          cache: false
+          install: false
+          node-version-file: false
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - if: matrix.node-version == '22.14.0'
+        env:
+          NODE_OPTIONS: --experimental-strip-types --disable-warning=ExperimentalWarning
+        run: pnpm run verify
+      - if: matrix.node-version != '22.14.0'
+        run: pnpm run verify
+      - if: matrix.node-version == '24'
+        name: Verify packed package types
+        run: |
+          package_tarball="$RUNNER_TEMP/tiny-html-template.tgz"
+          pnpm pack --ignore-scripts --out "$package_tarball"
+          pnpm exec attw "$package_tarball" --profile esm-only
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
