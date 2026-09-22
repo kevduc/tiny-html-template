@@ -1,0 +1,15 @@
+{
+  "extends": [
+    "@tsconfig/strictest/tsconfig.json",
+    "@tsconfig/node-ts/tsconfig.json"
+  ],
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "noEmit": true,
+    "noUncheckedSideEffectImports": true,
+    "target": "ES2022",
+    "types": ["node"]
+  },
+  "include": ["eslint.config.ts", "src/**/*.ts"]
+}
